@@ -1,0 +1,194 @@
+# Web-app
+# Python 3.x (recommended) python -m http.server 8000  # Or Python 2.x python -m SimpleHTTPServer 8000&lt;!DOCTYPE html> &lt;html lang="en"> &lt;head>     &lt;meta charset="UTF-8">     &lt;meta 
+Build the structural <ProtectedRoute> component to block unauthorized page route changes using React Router.// src/context/AuthContext.jsx
+import React, { createContext, useState, useEffect, useContext } from 'react';
+
+// Create the context container
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // 1. On app boot up, check if a token was saved in localStorage from a previous session
+  useEffect(() => {
+    const savedToken = localStorage.getItem('internal_tool_token');
+    const savedUser = localStorage.getItem('internal_tool_user');
+
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser)); // e.g., { id: 123, email: 'admin@company.com', role: 'admin' }
+    }
+    setLoading(false);
+  }, []);
+
+  // 2. Login action called by your Login Form page component
+  const login = (userData, jwtToken) => {
+    setUser(userData);
+    setToken(jwtToken);
+    localStorage.setItem('internal_tool_token', jwtToken);
+    localStorage.setItem('internal_tool_user', JSON.stringify(userData));
+  };
+
+  // 3. Logout action called by your Header or Sidebar sign-out button
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('internal_tool_token');
+    localStorage.removeItem('internal_tool_user');
+  };
+
+  // Pass all state and actions down into the React component hierarchy
+  return (
+    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+// src/routes/userRoutes.js
+import express from 'express';
+import { authenticateToken, requirePermission } from '../middleware/authMiddleware.js';
+import { PERMISSIONS } from '../config/permissions.js';
+
+const router = express.Router();
+
+// 1. All routes in this file require a valid logged-in user
+router.use(authenticateToken);
+
+// 2. View users endpoint (Accessible by Viewer, Support, Admin, Superadmin)
+router.get('/', 
+  requirePermission(PERMISSIONS.USERS_VIEW), 
+  (req, res) => res.json({ msg: "Here is your user data list" })
+);
+
+// 3. Create user endpoint (Accessible by Support, Admin, Superadmin)
+router.post('/', 
+  requirePermission(PERMISSIONS.USERS_CREATE), 
+  (req, res) => res.json({ msg: "User successfully created" })
+);
+
+// 4. Delete user endpoint (Accessible by Admin and Superadmin only)
+router.delete('/:id', 
+  requirePermission(PERMISSIONS.USERS_DELETE), 
+  (req, res) => res.json({ msg: "User successfully deleted" })
+);
+
+export default router;
+// src/middleware/authMiddleware.js
+import jwt from 'jsonwebtoken';
+import { ROLE_PERMISSIONS } from '../config/permissions.js';
+
+/**
+ * 1. Authentication: Verifies the JWT and attaches the user payload to the request.
+ */
+export const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer TOKEN"
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access Denied: No token provided.' });
+  }
+
+  try {
+    // Decodes payload, which should look like: { id: 123, role: 'support' }
+    const verifiedUser = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verifiedUser; 
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: 'Access Denied: Invalid or expired token.' });
+  }
+};
+
+/**
+ * 2. Authorization: Checks if the user's role has the required permission.
+ */
+export const requirePermission = (requiredPermission) => {
+  return (req, res, next) => {
+    // Safety check in case you forgot to put authenticateToken before this middleware
+    if (!req.user || !req.user.role) {
+      return res.status(500).json({ message: 'Internal Server Error: User identity missing.' });
+    }
+
+    const userRole = req.user.role;
+    const userPermissions = ROLE_PERMISSIONS[userRole] || [];
+
+    // Check if the user has the explicit permission needed
+    if (!userPermissions.includes(requiredPermission)) {
+      return res.status(430).json({ 
+        message: `Forbidden: You do not have permission to perform this action (${requiredPermission}).` 
+      });
+    }
+
+    next();
+  };
+};
+// src/config/permissions.js
+
+export const ROLES = {
+  SUPERADMIN: 'superadmin',
+  ADMIN: 'admin',
+  SUPPORT: 'support',
+  VIEWER: 'viewer'
+};
+
+export const PERMISSIONS = {
+  USERS_VIEW: 'users:view',
+  USERS_CREATE: 'users:create',
+  USERS_DELETE: 'users:delete',
+  LOGS_VIEW: 'logs:view',
+};
+
+// Map roles to what they can actually do
+export const ROLE_PERMISSIONS = {
+  [ROLES.SUPERADMIN]: [PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_CREATE, PERMISSIONS.USERS_DELETE, PERMISSIONS.LOGS_VIEW],
+  [ROLES.ADMIN]:      [PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_CREATE, PERMISSIONS.USERS_DELETE],
+  [ROLES.SUPPORT]:    [PERMISSIONS.USERS_VIEW, PERMISSIONS.USERS_CREATE],
+  [ROLES.VIEWER]:     [PERMISSIONS.USERS_VIEW]
+};
+server/
+├── src/
+│   ├── config/             # Database connection pools, JWT keys, AWS clients
+│   ├── constants/          # User roles (ADMIN, SUPPORT, VIEWER), HTTP codes
+│   ├── controllers/        # Express handlers (HTTP parsing, calling services)
+│   ├── middleware/         # Auth verification, RBAC permission checks, error logging
+│   ├── models/             # Database schemas (Prisma, Mongoose, or Sequelize)
+│   ├── routes/             # REST API endpoint definitions pointing to controllers
+│   ├── services/           # The core business logic (Calculations, integrations)
+│   └── app.js              # Express app setup with CORS, security headers, and JSON parsers
+└── index.js                # Server entry point that spins up the cluster
+client/
+├── src/
+│   ├── api/                # Axios/Fetch clients & central backend query logic
+│   ├── components/         # Global, highly reusable UI parts
+│   │   ├── ui/             # Shadcn/Radix atomic elements (Button, Input, Dialog)
+│   │   └── data/           # Complex tables, export buttons, filter bars
+│   ├── features/           # Modular tool domains (Highly Recommended)
+│   │   ├── user-admin/     # Everything related to managing user accounts
+│   │   │   ├── components/ # UserTable, ResetPasswordModal
+│   │   │   ├── hooks/      # useFetchUsers, useUpdateUser
+│   │   │   └── UserPage.jsx
+│   │   └── analytics/      # Everything related to logs and metrics
+│   ├── layouts/            # Sidebar Navigation, Breadcrumbs, Error Boundaries
+│   ├── store/              # Auth context or global state (Zustand/Redux)
+│   ├── App.jsx             # React Router mapping paths to Feature Pages
+│   └── main.jsx            # Entry point initializing global styles and query clients
+internal-tool/
+├── client/                 # React Frontend Application
+├── server/                 # Node.js/Express Backend API
+├── package.json            # Workspace settings for the monorepo
+└── README.md               # Setup instructions for internal developers
+my-web-app/
+├── public/                 # Static, uncompiled assets (favicon, index.html)
+├── src/                    # Main application source code
+│   ├── assets/             # Global media (images, fonts, global styles)
+│   ├── components/         # Reusable UI building blocks (buttons, inputs)
+│   ├── context/            # Global state management systems
+│   ├── hooks/              # Custom utilities and reactive logic
+│   ├── layouts/            # Page structures (sidebar, navbar wrappers)
+│   ├── pages/              # Individual route views (Home, Dashboard)
+│   ├── services/           # API integration and server request logic
+│   └── utils/              # Helper functions and date/string formatters
+├── tests/                  # Automated test suites
+├── package.json            # Project dependencies and environment scripts
+└── README.md               # Developer documentation
