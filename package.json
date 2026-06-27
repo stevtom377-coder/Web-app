@@ -1,0 +1,14 @@
+{
+  "name": "cosmic-resonance-studio",
+  "version": "0.1.0",
+  "description": "A web app for crafting cosmic resonance frequencies and playing them in the browser",
+  "main": "server.js",
+  
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

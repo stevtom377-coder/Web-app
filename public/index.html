@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cosmic Resonance Studio</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Biofeedback resonance lab</p>
+          <h1>Cosmic Resonance Frequency Studio</h1>
+          <p>Create calming frequency stacks, tune them like a living tone map, and play them as a gentle biofeedback-inspired soundscape.</p>
+        </div>
+
+        <div class="panel controls">
+          <label for="baseFreq">
+            Base tone
+            <input id="baseFreq" type="range" min="80" max="440" value="174" step="1" />
+            <span id="baseFreqValue">174 Hz</span>
+          </label>
+
+          <label for="layers">
+            Harmonic layers
+            <input id="layers" type="range" min="3" max="8" value="5" step="1" />
+            <span id="layersValue">5</span>
+          </label>
+
+          <label for="width">
+            Resonance width
+            <input id="width" type="range" min="1" max="16" value="6" step="1" />
+            <span id="widthValue">6 Hz</span>
+          </label>
+
+          <label for="mode">
+            Resonance mode
+            <select id="mode">
+              <option value="cosmic">Cosmic</option>
+              <option value="earth">Earth</option>
+              <option value="solar">Solar</option>
+            </select>
+          </label>
+
+          <div class="button-row">
+            <button id="generateBtn" class="primary">Create frequencies</button>
+            <button id="playBtn">Play resonance</button>
+            <button id="stopBtn">Stop</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel output">
+        <div class="status-row">
+          <h2>Generated frequency map</h2>
+          <span id="statusBadge">Idle</span>
+        </div>
+
+        <div class="summary">
+          <div class="stat">
+            <span>Carrier</span>
+            <strong id="carrierValue">174 Hz</strong>
+          </div>
+          <div class="stat">
+            <span>Modulation</span>
+            <strong id="modulationValue">6 Hz</strong>
+          </div>
+          <div class="stat">
+            <span>Sequence count</span>
+            <strong id="countValue">5</strong>
+          </div>
+        </div>
+
+        <ul id="frequencyList" class="frequency-list"></ul>
+      </section>
+    </main>
+
+    <script src="main.js"></script>
+  </body>
+</html>
