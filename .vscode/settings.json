@@ -1,0 +1,4 @@
+{
+    "containers.contexts.showInStatusBar": true,
+    "containers.orchestratorClient": "com.microsoft.visualstudio.orchestrators.dockercompose"
+}
